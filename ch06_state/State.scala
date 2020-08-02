@@ -205,3 +205,81 @@ object RNG {
 
 
 }
+
+
+/*
+  p.112 연습 문제 6.10 - 함수 unit, map, map2, flatMap, sequence를 일반화하라.
+  가능하면 이들을 State의 case class의 메서드로 추가하되, 불가할 경우 State object에 넣을 것.
+ */
+
+
+import State._
+
+
+case class State[S, +A](run: S => (A, S)) {
+
+  def map[B](f: A => B): State[S, B] =
+    flatMap(a => unit(f(a)))
+
+  def map2[B, C](sb: State[S, B])(g: (A, B) => C): State[S, C] =
+    flatMap(a => sb.map(b => g(a, b)))
+
+  def flatMap[B](f: A => State[S, B]): State[S, B] =
+    State(s => {
+      val (a, s1) = run(s)
+      f(a).run(s1)
+    })
+
+}
+
+object State {
+
+  type Rand[A] = State[RNG, A]
+
+  def unit[S, A](a: A): State[S, A] =
+    State(s => (a, s))
+
+  // implemented by foldRight
+  def sequence[S, A](sas: List[State[S, A]]): State[S, List[A]] =
+    sas.foldRight(unit[S, List[A]](List()))((f, acc) => f.map2(acc)(_ :: _))
+
+  // implemented by tail recursion
+  def sequence_1[S, A](sas: List[State[S, A]]): State[S, List[A]] = {
+
+    @scala.annotation.tailrec
+    def go(s: S, sas: List[State[S, A]], acc: List[A]): (List[A], S) =
+      sas match {
+        case Nil => (acc, s)
+        case h :: t => h.run(s) match {
+          case (a, s1) => go(s1, t, a :: acc)
+        }
+      }
+
+    State(s => go(s, sas, List()))
+  }
+
+  // implemented by foldLeft
+  /*
+  reverse 연산이 들어가니 foldRight보다 더 비효율적?
+  -> No 오히려, foldLeft 연산이 더 빠르다.
+  foldRight의 경우 tail-recursion이 아니기 때문.
+   */
+  def sequence_2[S, A](sas: List[State[S, A]]): State[S, List[A]] =
+  sas.reverse.foldLeft(unit[S, List[A]](List()))((acc, f) => f.map2(acc)(_ :: _))
+
+  // p.114 get, set을 사용해 State를 임의의 방식으로 수정하는 조합기 modify
+
+  def modify[S](f: S => S): State[S, Unit] = for {
+    s <- get // 현재 상태를 얻어 s에 배정
+    _ <- set(f(s)) // 새 상태를 s를 f에 적용한 결과로 설정
+  } yield ()
+
+  // 입력 상태를 전달하고 그 것을 반환값으로 돌려줌
+  def get[S]: State[S, S] = State(s => (s, s))
+
+  // 새 상태 s를 받는다. output은 입력 상태를 무시하고, 그 것을 새 상태로 치환하며,
+  // 의미 있는 값 대신 ()를 돌려준다.
+  def set[S](s: S): State[S, Unit] = State(_ => ((), s)
+
+
+}
