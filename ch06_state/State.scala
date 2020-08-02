@@ -1,3 +1,5 @@
+package ch06_state
+
 
 trait RNG {
   def nextInt: (Int, RNG)
@@ -171,5 +173,35 @@ object RNG {
 
   def ints_1(count: Int): Rand[List[Int]] =
     sequence(List.fill(count)(int))
+
+  /*
+  p.110 연습 문제 6.8
+  flatMap을 구현하고, 그 것을 이용해 nonNegativeLessThan을 구현하라.
+
+   */
+  def flatMap[A, B](f: Rand[A])(g: A => Rand[B]): Rand[B] =
+    rng => {
+      val (a, rng1) = f(rng)
+      g(a)(rng1)
+    }
+
+  def nonNegativeLessThanViaFlatMap(n: Int): Rand[Int] =
+    flatMap(nonNegativeInt) { i =>
+      val mod = i % n
+      if (i + (n - 1) - mod >= 0) unit(mod) else nonNegativeLessThanViaFlatMap(n)
+    }
+
+  /*
+  p.110 연습 문제 6.9
+  map과 map2를 flatMap을 사용해 다시 구현하라.
+  이 것이 가능하다는 사실은 앞에서 flatMap이 map과 map2보다 더 강력하다고 말할 근거가 된다.
+   */
+
+  def mapViaFlatMap[A, B](s: Rand[A])(f: A => B): Rand[B] =
+    flatMap(s)(a => unit(f(a)))
+
+  def map2ViaFlatMap[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+    flatMap(ra)(a => mapViaFlatMap(rb)(b => f(a, b)))
+
 
 }
