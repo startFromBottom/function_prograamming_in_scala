@@ -279,7 +279,7 @@ object State {
 
   // 새 상태 s를 받는다. output은 입력 상태를 무시하고, 그 것을 새 상태로 치환하며,
   // 의미 있는 값 대신 ()를 돌려준다.
-  def set[S](s: S): State[S, Unit] = State(_ => ((), s)
+  def set[S](s: S): State[S, Unit] = State(_ => ((), s))
 
 
 }
